@@ -47,6 +47,25 @@ Train:
 bash scripts/grpo.sh
 ```
 
+For one node with eight 40 GB A100 GPUs, inspect and then run the built-in
+profile:
+
+```bash
+bash scripts/grpo.sh \
+  --model outputs/models/sft-curriculum/stage-c/merged \
+  --hardware-profile a100-40gb-8x \
+  --dry-run
+bash scripts/grpo.sh \
+  --model outputs/models/sft-curriculum/stage-c/merged \
+  --hardware-profile a100-40gb-8x
+```
+
+The profile keeps the 24,576-token context, uses eight FSDP workers with the
+existing parameter and optimizer offload, raises the prompt batch to 8, keeps
+the per-GPU micro batch at 1, and limits vLLM to 30% GPU utilization and four
+sequences. It produces 32 rollouts per attempted update instead of the default
+8, so compare runs by total generated trajectories as well as optimizer steps.
+
 Important defaults:
 
 | Setting | Value |

@@ -95,6 +95,38 @@ class PublicEntrypointTest(unittest.TestCase):
         )
         self.assertIn("trainer.logger=[console]", command)
 
+    def test_grpo_eight_a100_profile_applies_memory_safe_overrides(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temporary = Path(tmpdir)
+            model = temporary / "model"
+            model.mkdir()
+            (model / "config.json").write_text("{}", encoding="utf-8")
+            (model / "model.safetensors").write_bytes(b"weights")
+            train = temporary / "train.parquet"
+            train.write_bytes(b"example")
+            validation = temporary / "validation.parquet"
+            validation.write_bytes(b"example")
+            with patch.object(
+                sys,
+                "argv",
+                [
+                    "train_grpo.py",
+                    "--model", str(model),
+                    "--train-data", str(train),
+                    "--val-data", str(validation),
+                    "--output", str(temporary / "output"),
+                    "--config", str(root / "configs/grpo.yaml"),
+                    "--hardware-profile", "a100-40gb-8x",
+                    "--dry-run",
+                ],
+            ):
+                command, _ = build_command(parse_args())
+
+        self.assertIn("trainer.n_gpus_per_node=8", command)
+        self.assertIn("data.train_batch_size=8", command)
+        self.assertIn("actor_rollout_ref.rollout.gpu_memory_utilization=0.30", command)
+
 
 if __name__ == "__main__":
     unittest.main()

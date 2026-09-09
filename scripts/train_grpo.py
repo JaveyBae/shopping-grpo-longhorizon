@@ -43,6 +43,12 @@ def parse_args() -> argparse.Namespace:
         default="console",
     )
     parser.add_argument("--experiment-name", default="shopping-agent-grpo")
+    parser.add_argument(
+        "--hardware-profile",
+        choices=("default", "a100-40gb-8x"),
+        default="default",
+        help="Apply a hardware-oriented set of Hydra overrides.",
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
@@ -58,6 +64,35 @@ def _validated_path(path: Path, description: str) -> Path:
     if not resolved.exists():
         raise SystemExit(f"{description} does not exist: {resolved}")
     return resolved
+
+
+def _runtime_overrides(args: argparse.Namespace) -> list[str]:
+    logger_override = (
+        "trainer.logger=[console,swanlab]"
+        if args.logger == "swanlab"
+        else "trainer.logger=[console]"
+    )
+    overrides = [
+        logger_override,
+        f"trainer.experiment_name={args.experiment_name}",
+    ]
+    if args.hardware_profile == "a100-40gb-8x":
+        overrides.extend(
+            [
+                "trainer.n_gpus_per_node=8",
+                "trainer.nnodes=1",
+                "data.train_batch_size=8",
+                "data.val_batch_size=8",
+                "actor_rollout_ref.actor.ppo_mini_batch_size=8",
+                "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
+                "actor_rollout_ref.rollout.gpu_memory_utilization=0.30",
+                "actor_rollout_ref.rollout.max_num_seqs=4",
+            ]
+        )
+    extra = list(args.hydra_overrides)
+    if extra[:1] == ["--"]:
+        extra = extra[1:]
+    return [*overrides, *extra]
 
 
 def build_command(args: argparse.Namespace) -> tuple[list[str], dict[str, str]]:
@@ -108,18 +143,7 @@ def build_command(args: argparse.Namespace) -> tuple[list[str], dict[str, str]]:
                 "SWANLAB_LOG_DIR": str(output / "swanlab"),
             }
         )
-    logger_override = (
-        "trainer.logger=[console,swanlab]"
-        if args.logger == "swanlab"
-        else "trainer.logger=[console]"
-    )
-    overrides = [
-        logger_override,
-        f"trainer.experiment_name={args.experiment_name}",
-    ]
-    extra = list(args.hydra_overrides)
-    if extra[:1] == ["--"]:
-        extra = extra[1:]
+    overrides = _runtime_overrides(args)
     command = [
         sys.executable,
         "-m",
@@ -127,7 +151,6 @@ def build_command(args: argparse.Namespace) -> tuple[list[str], dict[str, str]]:
         f"--config-path={config.parent}",
         f"--config-name={config.stem}",
         *overrides,
-        *extra,
     ]
     return command, environment
 
@@ -149,11 +172,11 @@ def main() -> None:
     if args.dry_run:
         return
     Path(environment["GRPO_OUTPUT_DIR"]).mkdir(parents=True, exist_ok=True)
+    overrides = _runtime_overrides(args)
     preflight = [
         sys.executable,
         str(ROOT / "scripts/check_grpo_runtime.py"),
         *overrides,
-        *extra,
     ]
     preflight_status = subprocess.call(preflight, cwd=ROOT, env=environment)
     if preflight_status:

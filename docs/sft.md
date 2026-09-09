@@ -31,6 +31,18 @@ bash scripts/sft_curriculum.sh --dry-run
 bash scripts/sft_curriculum.sh --swanlab
 ```
 
+For one node with eight 40 GB A100 GPUs, use the built-in profile:
+
+```bash
+bash scripts/setup.sh
+bash scripts/sft_curriculum.sh --hardware-profile a100-40gb-8x
+```
+
+The profile keeps the 24,576-token context and global batch size of 8. It
+launches eight distributed workers with a per-GPU batch of 1 and accumulation
+of 1, and enables NF4 QLoRA plus Liger fused loss. Stage merges remain
+single-process.
+
 The launcher trains a LoRA adapter and then merges it with the base model:
 
 ```text

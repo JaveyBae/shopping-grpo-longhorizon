@@ -68,6 +68,40 @@ class SftCurriculumTest(unittest.TestCase):
                 stop_after_stage="a",
             )
 
+    def test_eight_gpu_profile_builds_torchrun_command_and_preserves_global_batch(self):
+        manifest = {
+            "stages": {
+                "a": {"epochs": 1.0, "learning_rate": 1e-4},
+            }
+        }
+        commands = build_stage_commands(
+            manifest,
+            manifest_path=Path("manifest.json"),
+            source=Path("all.jsonl"),
+            base_model="base",
+            output_root=Path("outputs"),
+            python="python",
+            stop_after_stage="a",
+            qlora=True,
+            liger_kernel=True,
+            num_processes=8,
+            gradient_accumulation_steps=1,
+        )
+
+        train = commands[0]["train"]
+        self.assertEqual(train[:5], [
+            "python",
+            "-m",
+            "torch.distributed.run",
+            "--standalone",
+            "--nproc_per_node=8",
+        ])
+        self.assertIn("--qlora", train)
+        self.assertIn("--liger-kernel", train)
+        accumulation_index = train.index("--gradient-accumulation-steps")
+        self.assertEqual(train[accumulation_index + 1], "1")
+        self.assertEqual(commands[0]["merge"][0], "python")
+
 
 if __name__ == "__main__":
     unittest.main()

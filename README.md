@@ -283,6 +283,25 @@ bash scripts/grpo.sh --dry-run
 bash scripts/grpo.sh
 ```
 
+单机 8 张 A100 40GB 可直接使用内置硬件配置：
+
+```bash
+bash scripts/sft_curriculum.sh --hardware-profile a100-40gb-8x
+
+bash scripts/grpo.sh \
+  --model outputs/models/sft-curriculum/stage-c/merged \
+  --hardware-profile a100-40gb-8x \
+  --dry-run
+bash scripts/grpo.sh \
+  --model outputs/models/sft-curriculum/stage-c/merged \
+  --hardware-profile a100-40gb-8x
+```
+
+该配置保留 24,576-token 上下文。SFT 使用 8 卡 QLoRA + Liger，并保持全局
+batch 为 8；GRPO 使用 8 卡 FSDP/offload、prompt batch 8 和每个 prompt 4 条
+rollout。多卡 GRPO 每步的轨迹数是默认单卡配置的 4 倍，比较实验时应同时记录
+总生成轨迹数。
+
 根据验证集指标选择 Checkpoint，并导出 veRL Actor：
 
 ```bash

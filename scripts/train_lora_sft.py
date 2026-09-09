@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import time as _time
 from functools import partial
 from pathlib import Path
@@ -169,6 +170,8 @@ def _model_load_kwargs(args, dtype, bits_and_bytes_config):
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
         )
+        # Keep one quantized model replica on each torchrun worker's local GPU.
+        kwargs["device_map"] = {"": int(os.environ.get("LOCAL_RANK", "0"))}
     return kwargs
 
 
@@ -550,7 +553,8 @@ def main():
     )
     result = trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
     trainer.save_model(str(args.output))
-    chat_template.save_pretrained(str(args.output))
+    if trainer.is_world_process_zero():
+        chat_template.save_pretrained(str(args.output))
 
     # --- 训练完成摘要 ---
     total_time = _time.time() - _start_time
@@ -579,20 +583,21 @@ def main():
         "arguments": vars(args),
     }
 
-    print(f"\n{'='*60}")
-    print("  训练完成")
-    print(f"  train_loss={result.training_loss:.4f}")
-    print(f"  eval_loss={result.metrics.get('eval_loss', 'N/A')}")
-    print(f"  peak_gpu={gpu_peak:.1f} GiB")
-    print(f"  adapter → {args.output}")
-    print(f"{'='*60}\n")
+    if trainer.is_world_process_zero():
+        print(f"\n{'='*60}")
+        print("  训练完成")
+        print(f"  train_loss={result.training_loss:.4f}")
+        print(f"  eval_loss={result.metrics.get('eval_loss', 'N/A')}")
+        print(f"  peak_gpu={gpu_peak:.1f} GiB")
+        print(f"  adapter → {args.output}")
+        print(f"{'='*60}\n")
 
-    (args.output / "train_summary.json").write_text(
-        json.dumps(train_summary, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
+        (args.output / "train_summary.json").write_text(
+            json.dumps(train_summary, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
 
-    print(f"LoRA adapter 已保存到 {args.output}")
+        print(f"LoRA adapter 已保存到 {args.output}")
 
 
 if __name__ == "__main__":

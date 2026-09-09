@@ -11,7 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 STAGES = ("a", "b", "c")
 
@@ -30,6 +29,8 @@ def build_stage_commands(
     swanlab_project="shopping-grpo-sft-curriculum",
     qlora=False,
     liger_kernel=False,
+    num_processes=1,
+    gradient_accumulation_steps=None,
     resume_from_checkpoint=None,
 ):
     start = STAGES.index(start_stage)
@@ -46,8 +47,17 @@ def build_stage_commands(
             if stage == "a"
             else str(Path(output_root) / f"stage-{STAGES[STAGES.index(stage) - 1]}" / "merged")
         )
+        launcher = [str(python)]
+        if num_processes > 1:
+            launcher = [
+                str(python),
+                "-m",
+                "torch.distributed.run",
+                "--standalone",
+                f"--nproc_per_node={num_processes}",
+            ]
         train = [
-            str(python),
+            *launcher,
             str(ROOT / "scripts/train_lora_sft.py"),
             "--model",
             str(model),
@@ -75,6 +85,10 @@ def build_stage_commands(
             "--swanlab-run-name",
             f"pure-v4-stage-{stage}",
         ]
+        if gradient_accumulation_steps is not None:
+            train.extend(
+                ["--gradient-accumulation-steps", str(gradient_accumulation_steps)]
+            )
         if swanlab:
             train.extend(["--swanlab", "--swanlab-project", swanlab_project])
         if qlora:
@@ -117,12 +131,26 @@ def parse_args():
     parser.add_argument("--swanlab-project", default="shopping-grpo-sft-curriculum")
     parser.add_argument("--qlora", action="store_true")
     parser.add_argument("--liger-kernel", action="store_true")
+    parser.add_argument(
+        "--hardware-profile",
+        choices=("default", "a100-40gb-8x"),
+        default="default",
+        help="预设硬件配置；8x A100 40GB 使用 QLoRA、Liger 和 8 进程 DDP。",
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    if args.hardware_profile == "a100-40gb-8x":
+        args.qlora = True
+        args.liger_kernel = True
+        num_processes = 8
+        gradient_accumulation_steps = 1
+    else:
+        num_processes = 1
+        gradient_accumulation_steps = None
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != "shopping-sft-curriculum-v1":
         raise SystemExit("不支持的课程清单 schema_version")
@@ -143,6 +171,8 @@ def main():
             swanlab_project=args.swanlab_project,
             qlora=args.qlora,
             liger_kernel=args.liger_kernel,
+            num_processes=num_processes,
+            gradient_accumulation_steps=gradient_accumulation_steps,
             resume_from_checkpoint=args.resume_from_checkpoint,
         )
     except (KeyError, ValueError) as exc:
