@@ -125,7 +125,13 @@ class PublicEntrypointTest(unittest.TestCase):
 
         self.assertIn("trainer.n_gpus_per_node=8", command)
         self.assertIn("data.train_batch_size=8", command)
-        self.assertIn("actor_rollout_ref.rollout.gpu_memory_utilization=0.30", command)
+        self.assertIn("actor_rollout_ref.model.use_remove_padding=true", command)
+        self.assertIn(
+            "actor_rollout_ref.actor.fsdp_config.ulysses_sequence_parallel_size=2",
+            command,
+        )
+        self.assertIn("actor_rollout_ref.rollout.gpu_memory_utilization=0.20", command)
+        self.assertIn("actor_rollout_ref.rollout.max_num_seqs=2", command)
 
 
 if __name__ == "__main__":

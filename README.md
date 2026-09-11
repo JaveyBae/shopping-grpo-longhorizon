@@ -298,9 +298,10 @@ bash scripts/grpo.sh \
 ```
 
 该配置保留 24,576-token 上下文。SFT 使用 8 卡 QLoRA + Liger，并保持全局
-batch 为 8；GRPO 使用 8 卡 FSDP/offload、prompt batch 8 和每个 prompt 4 条
-rollout。多卡 GRPO 每步的轨迹数是默认单卡配置的 4 倍，比较实验时应同时记录
-总生成轨迹数。
+batch 为 8；GRPO 使用 8 卡 FSDP/offload、2 路 Ulysses 序列并行、prompt batch 8
+和每个 prompt 4 条 rollout。多卡 GRPO 每步的轨迹数是默认单卡配置的 4 倍，
+比较实验时应同时记录总生成轨迹数。40GB 配置的显存调优与 OOM 记录见
+[A100 40GB GRPO 运行记录](docs/grpo-a100-40gb.md)。
 
 根据验证集指标选择 Checkpoint，并导出 veRL Actor：
 

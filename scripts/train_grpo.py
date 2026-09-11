@@ -85,8 +85,10 @@ def _runtime_overrides(args: argparse.Namespace) -> list[str]:
                 "data.val_batch_size=8",
                 "actor_rollout_ref.actor.ppo_mini_batch_size=8",
                 "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
-                "actor_rollout_ref.rollout.gpu_memory_utilization=0.30",
-                "actor_rollout_ref.rollout.max_num_seqs=4",
+                "actor_rollout_ref.model.use_remove_padding=true",
+                "actor_rollout_ref.actor.fsdp_config.ulysses_sequence_parallel_size=2",
+                "actor_rollout_ref.rollout.gpu_memory_utilization=0.20",
+                "actor_rollout_ref.rollout.max_num_seqs=2",
             ]
         )
     extra = list(args.hydra_overrides)
