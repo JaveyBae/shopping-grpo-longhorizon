@@ -1,8 +1,8 @@
 """veRL 不应为了纯 padding 操作强制依赖 FlashAttention。"""
 
+import unittest
 import sys
 from types import ModuleType
-import unittest
 from unittest.mock import patch
 
 
@@ -50,7 +50,6 @@ class VerlCompatTest(unittest.TestCase):
 
         self.assertEqual(attention._get_attention_functions(), expected)
         self.assertTrue(RayPPOTrainer._update_actor._shopping_trace)
-
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
