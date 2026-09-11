@@ -54,6 +54,7 @@ PYTHONPATH=. "${ENV_DIR}/bin/python" scripts/build_index.py
 
 cd "${ROOT}"
 "${ROOT}/.venv/bin/python" scripts/apply_verl_dynamic_sampling_patch.py
+"${ROOT}/.venv/bin/python" scripts/apply_verl_attention_fallback_patch.py
 
 echo "Shopping Agent training environment is ready."
 echo "Product SHA-256: ${actual_sha256}"

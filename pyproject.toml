@@ -52,9 +52,6 @@ shopping-grpo = "shopping_grpo.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools]
-py-modules = ["sitecustomize"]
-
 [tool.setuptools.package-data]
 "shopping_grpo.resources" = ["*.json"]
 

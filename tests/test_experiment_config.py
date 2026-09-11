@@ -10,9 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExperimentConfigTest(unittest.TestCase):
-    def test_grpo_installs_worker_compat_without_ray_setup_hook(self):
+    def test_grpo_does_not_use_a_ray_worker_setup_hook(self):
         config = (ROOT / "configs/grpo.yaml").read_text(encoding="utf-8")
-        self.assertIn('SHOPPING_GRPO_INSTALL_VERL_COMPAT: "1"', config)
         self.assertNotIn("worker_process_setup_hook", config)
 
     def test_registered_baselines_preserve_current_training_values(self):

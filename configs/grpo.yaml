@@ -125,9 +125,7 @@ reward_model:
 
 ray_kwargs:
   ray_init:
-    runtime_env:
-      env_vars:
-        SHOPPING_GRPO_INSTALL_VERL_COMPAT: "1"
+    runtime_env: {}
 
 trainer:
   total_epochs: 50
